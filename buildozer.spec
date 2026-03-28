@@ -1,11 +1,12 @@
 [app]
-title = PDF Pro Searcher
-package.name = pdfprosearcher
-package.domain = org.murali.tools
+title = PDF Line Searcher
+package.name = pdflinesearcher
+package.domain = org.murali.apps
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
-version = 2.0.1
+version = 2.1.0
 
+# Critical requirements for Pandas + Excel + PDF
 requirements = python3,kivy==2.2.0,pymupdf,pandas,plyer,openssl,sqlite3,openpyxl
 
 orientation = portrait
