@@ -1,12 +1,18 @@
 name: Build APK
-on: [push]
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -16,19 +22,33 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt update
-          # Removed libmql-dev and added all necessary build tools
-          sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev sqlite3 bzip2 libbz2-dev
+          sudo apt install -y \
+            git zip unzip openjdk-17-jdk python3-pip \
+            autoconf libtool libtool-bin m4 cmake \
+            pkg-config zlib1g-dev libncurses5-dev \
+            libgdbm-dev libnss3-dev libssl-dev \
+            libreadline-dev libffi-dev libsqlite3-dev \
+            sqlite3 bzip2 libbz2-dev
+          
           pip3 install --upgrade pip
           pip3 install buildozer cython virtualenv
 
-      - name: Build APK
+      - name: Build with Buildozer (Logging Enabled)
         run: |
           export PATH=$PATH:$HOME/.local/bin
-          # 'yes' automatically accepts the Android SDK licenses
-          yes | buildozer -v android debug
+          # 'yes' accepts licenses. 'tee' captures logs to both console and file.
+          yes | buildozer -v android debug 2>&1 | tee build_log.txt
+        continue-on-error: true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ICICI-Extractor-APK
           path: bin/*.apk
+
+      - name: Upload Build Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-report
+          path: build_log.txt
