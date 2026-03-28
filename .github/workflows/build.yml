@@ -15,7 +15,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt update
-          # libtool-bin, m4, and cmake are the critical fixes for your error
+          # libtool-bin and m4 are the direct fixes for the LT_SYS_SYMBOL_USCORE error
           sudo apt install -y \
             git zip unzip openjdk-17-jdk python3-pip \
             autoconf libtool libtool-bin m4 cmake \
@@ -30,14 +30,14 @@ jobs:
       - name: Build with Buildozer
         run: |
           export PATH=$PATH:$HOME/.local/bin
-          # 'yes |' automatically accepts Android SDK licenses to prevent hangs
+          # 'yes |' handles the Android SDK license prompts automatically
           yes | buildozer -v android debug 2>&1 | tee build_log.txt
         continue-on-error: true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ICICI-Searcher-APK
+          name: PDF-Searcher-APK
           path: bin/*.apk
 
       - name: Upload Build Log
