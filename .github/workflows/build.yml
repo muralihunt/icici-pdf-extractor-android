@@ -15,10 +15,10 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt update
-          # libtool-bin and m4 are the direct fixes for the LT_SYS_SYMBOL_USCORE error
+          # Direct fix for LT_SYS_SYMBOL_USCORE and libffi/openssl compilation
           sudo apt install -y \
             git zip unzip openjdk-17-jdk python3-pip \
-            autoconf libtool libtool-bin m4 cmake \
+            autoconf libtool libtool-bin libltdl-dev m4 cmake \
             pkg-config zlib1g-dev libncurses5-dev \
             libgdbm-dev libnss3-dev libssl-dev \
             libreadline-dev libffi-dev libsqlite3-dev \
@@ -30,7 +30,9 @@ jobs:
       - name: Build with Buildozer
         run: |
           export PATH=$PATH:$HOME/.local/bin
-          # 'yes |' handles the Android SDK license prompts automatically
+          # 1. Clean the previous failed build cache
+          buildozer appclean
+          # 2. Run the build with automatic license acceptance
           yes | buildozer -v android debug 2>&1 | tee build_log.txt
         continue-on-error: true
 
