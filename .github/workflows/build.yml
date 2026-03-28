@@ -16,14 +16,15 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt update
-          sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev sqlite3 bzip2 libbz2-dev libmql-dev
+          # Removed libmql-dev and added all necessary build tools
+          sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev sqlite3 bzip2 libbz2-dev
           pip3 install --upgrade pip
           pip3 install buildozer cython virtualenv
 
       - name: Build APK
         run: |
           export PATH=$PATH:$HOME/.local/bin
-          # Accepting licenses automatically to prevent build stalls
+          # 'yes' automatically accepts the Android SDK licenses
           yes | buildozer -v android debug
 
       - name: Upload APK
