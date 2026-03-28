@@ -1,18 +1,11 @@
 name: Build APK
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -29,21 +22,20 @@ jobs:
             libgdbm-dev libnss3-dev libssl-dev \
             libreadline-dev libffi-dev libsqlite3-dev \
             sqlite3 bzip2 libbz2-dev
-          
           pip3 install --upgrade pip
           pip3 install buildozer cython virtualenv
 
-      - name: Build with Buildozer (Logging Enabled)
+      - name: Build with Buildozer
         run: |
           export PATH=$PATH:$HOME/.local/bin
-          # 'yes' accepts licenses. 'tee' captures logs to both console and file.
+          # This captures everything to build_log.txt and prevents the macro error
           yes | buildozer -v android debug 2>&1 | tee build_log.txt
         continue-on-error: true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ICICI-Extractor-APK
+          name: ICICI-Searcher-APK
           path: bin/*.apk
 
       - name: Upload Build Log
