@@ -1,33 +1,42 @@
 import os
-import re
 import pandas as pd
 import fitz  # PyMuPDF
+from datetime import datetime
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
 from kivy.utils import platform
 from plyer import filechooser
 
-# ICICI Specific Patterns
-# Date: DD-MM-YYYY or DD/MM/YYYY
-date_pattern = r'\d{2}[-/]\d{2}[-/]\d{4}'
-# Amount: Matches numbers like 1,234.00 or 500.00
-amount_pattern = r'[\d,]+\.\d{2}'
-
 class UI(BoxLayout):
     def __init__(self, **kwargs):
-        super().__init__(orientation="vertical", padding=20, spacing=10, **kwargs)
-        self.label = Label(text="ICICI PDF Extractor", font_size='20sp')
+        super().__init__(orientation="vertical", padding=30, spacing=15, **kwargs)
+        
+        self.add_widget(Label(text="PDF Data Extractor Pro", font_size='24sp', size_hint_y=None, height=100))
+
+        # Inputs
+        self.add_widget(Label(text="PDF Password (if any):", size_hint_y=None, height=40))
+        self.password_input = TextInput(multiline=False, password=True, size_hint_y=None, height=80)
+        self.add_widget(self.password_input)
+
+        self.add_widget(Label(text="Search Keyword:", size_hint_y=None, height=40))
+        self.search_input = TextInput(multiline=False, hint_text="e.g. Amazon, Salary, UPI", size_hint_y=None, height=80)
+        self.add_widget(self.search_input)
+
+        self.label = Label(text="Ready", halign="center")
         self.add_widget(self.label)
 
-        self.btn = Button(text="Select ICICI Statement", size_hint_y=None, height=120)
+        # Buttons
+        self.btn = Button(text="📂 SELECT PDF", size_hint_y=None, height=120, background_color=(0.1, 0.5, 0.8, 1))
         self.btn.bind(on_press=self.pick_file)
         self.add_widget(self.btn)
 
-        self.run_btn = Button(text="Extract to CSV", size_hint_y=None, height=120, background_color=(0, 0.7, 0, 1))
+        self.run_btn = Button(text="📊 SEARCH & EXPORT", size_hint_y=None, height=120, background_color=(0.1, 0.7, 0.3, 1))
         self.run_btn.bind(on_press=self.extract)
         self.add_widget(self.run_btn)
+        
         self.file_path = None
 
     def pick_file(self, instance):
@@ -39,8 +48,9 @@ class UI(BoxLayout):
             self.label.text = f"Selected: {os.path.basename(self.file_path)}"
 
     def extract(self, instance):
-        if not self.file_path:
-            self.label.text = "Please select a file first!"
+        query = self.search_input.text.strip().lower()
+        if not self.file_path or not query:
+            self.label.text = "Error: Need file + keyword"
             return
 
         if platform == 'android':
@@ -49,38 +59,43 @@ class UI(BoxLayout):
 
         try:
             doc = fitz.open(self.file_path)
-            full_text = ""
+            if doc.is_encrypted:
+                if not doc.authenticate(self.password_input.text):
+                    self.label.text = "Error: Invalid Password"
+                    return
+
+            results = []
             for page in doc:
-                full_text += page.get_text("text") + "\n"
+                blocks = page.get_text("blocks")
+                for b in blocks:
+                    content = b[4].strip()
+                    if query in content.lower():
+                        # Standardize text by removing extra newlines
+                        clean_line = " ".join(content.split())
+                        results.append({"Found Text": clean_line})
 
-            # ICICI Regex: Date -> Description -> Amount
-            # We look for a date, then any text (non-greedy), then an amount.
-            matches = re.findall(f'({date_pattern})\s+(.*?)\s+({amount_pattern})', full_text, re.DOTALL)
-
-            if not matches:
-                self.label.text = "No transactions found.\nCheck if PDF is password protected."
+            if not results:
+                self.label.text = "No matches found."
                 return
 
-            df = pd.DataFrame(matches, columns=["Date", "Description", "Amount"])
-            
-            # Clean up descriptions (remove newlines inside descriptions)
-            df['Description'] = df['Description'].str.replace('\n', ' ').str.strip()
+            # Save with Unique Name
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"Extracted_{query}_{timestamp}.xlsx"
 
             if platform == 'android':
                 from android.storage import primary_external_storage_path
-                path = os.path.join(primary_external_storage_path(), "Download", "ICICI_Extracted.csv")
+                save_path = os.path.join(primary_external_storage_path(), "Download", filename)
             else:
-                path = "ICICI_Extracted.csv"
+                save_path = filename
 
-            df.to_csv(path, index=False)
-            self.label.text = f"✅ Success! {len(df)} rows\nSaved to Downloads folder"
+            pd.DataFrame(results).to_excel(save_path, index=False, engine='openpyxl')
+            self.label.text = f"✅ Success! Saved to Downloads\n{filename}"
 
         except Exception as e:
             self.label.text = f"Error: {str(e)}"
 
-class ICICIApp(App):
-    def build(self):
-        return UI()
+class PDFProApp(App):
+    def build(self): return UI()
 
 if __name__ == "__main__":
-    ICICIApp().run()
+    PDFProApp().run()
