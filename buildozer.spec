@@ -1,13 +1,12 @@
 [app]
-title = ICICI Extractor
-package.name = iciciextractor
-package.domain = org.icici.tools
+title = PDF Pro Searcher
+package.name = pdfprosearcher
+package.domain = org.murali.tools
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
-version = 1.1.0
+version = 2.0.1
 
-# Added openssl and sqlite3 for runtime stability
-requirements = python3,kivy==2.2.0,pymupdf,pandas,plyer,openssl,sqlite3
+requirements = python3,kivy==2.2.0,pymupdf,pandas,plyer,openssl,sqlite3,openpyxl
 
 orientation = portrait
 android.api = 33
