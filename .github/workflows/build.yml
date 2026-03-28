@@ -15,7 +15,6 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt update
-          # Standard dependencies + those required for LT_SYS macros and pandas/numpy
           sudo apt install -y \
             git zip unzip openjdk-17-jdk python3-pip \
             autoconf libtool libtool-bin libltdl-dev m4 cmake \
@@ -30,22 +29,21 @@ jobs:
       - name: Build with Buildozer
         run: |
           export PATH=$PATH:$HOME/.local/bin
-          # 1. Ensure a clean state to prevent macro/linkage corruption
+          # This command is CRITICAL to remove the LT_SYS error permanently
           buildozer appclean
-          # 2. Accept licenses and run the build
-          # This step can take 40+ minutes due to pandas/numpy compilation
+          # Accept licenses and build
           yes | buildozer -v android debug 2>&1 | tee build_log.txt
         continue-on-error: true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PDF-Searcher-APK
+          name: Working-PDF-Extractor
           path: bin/*.apk
 
       - name: Upload Build Log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log-report
+          name: final-build-log
           path: build_log.txt
