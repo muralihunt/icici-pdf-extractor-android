@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-import fitz  # PyMuPDF
+import fitz
 from datetime import datetime
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
@@ -12,91 +12,90 @@ from plyer import filechooser
 
 class UI(BoxLayout):
     def __init__(self, **kwargs):
-        super().__init__(orientation="vertical", padding=30, spacing=15, **kwargs)
+        super().__init__(orientation="vertical", padding=40, spacing=20, **kwargs)
         
-        self.add_widget(Label(text="Advanced PDF Extractor", font_size='22sp', size_hint_y=None, height=100))
+        self.add_widget(Label(text="PDF Searcher Pro", font_size='24sp', size_hint_y=None, height=100))
 
-        # Inputs
-        self.add_widget(Label(text="PDF Password (leave blank if none):", size_hint_y=None, height=40))
-        self.password_input = TextInput(multiline=False, password=True, size_hint_y=None, height=80)
+        self.password_input = TextInput(hint_text="PDF Password (optional)", multiline=False, password=True, size_hint_y=None, height=100)
         self.add_widget(self.password_input)
 
-        self.add_widget(Label(text="Text to Search:", size_hint_y=None, height=40))
-        self.search_input = TextInput(multiline=False, hint_text="e.g. Amazon, Salary, Rent", size_hint_y=None, height=80)
+        self.search_input = TextInput(hint_text="Search keyword (e.g. Amazon)", multiline=False, size_hint_y=None, height=100)
         self.add_widget(self.search_input)
 
-        self.label = Label(text="Select a PDF to begin", halign="center")
-        self.add_widget(self.label)
+        self.status = Label(text="Step 1: Select a PDF file", color=(0.7, 0.7, 0.7, 1))
+        self.add_widget(self.status)
 
-        # Action Buttons
-        self.btn = Button(text="📂 SELECT PDF", size_hint_y=None, height=120, background_color=(0.1, 0.5, 0.8, 1))
-        self.btn.bind(on_press=self.pick_file)
-        self.add_widget(self.btn)
+        self.btn_select = Button(text="📂 SELECT PDF", size_hint_y=None, height=120, background_color=(0.2, 0.5, 0.9, 1))
+        self.btn_select.bind(on_press=self.open_file_picker)
+        self.add_widget(self.btn_select)
 
-        self.run_btn = Button(text="📊 SEARCH & EXPORT", size_hint_y=None, height=120, background_color=(0.1, 0.7, 0.3, 1))
-        self.run_btn.bind(on_press=self.extract)
-        self.add_widget(self.run_btn)
+        self.btn_run = Button(text="📊 GENERATE EXCEL", size_hint_y=None, height=120, background_color=(0.1, 0.7, 0.3, 1))
+        self.btn_run.bind(on_press=self.process_pdf)
+        self.add_widget(self.btn_run)
         
-        self.file_path = None
+        self.selected_path = None
 
-    def pick_file(self, instance):
-        filechooser.open_file(on_selection=self.set_file)
+    def open_file_picker(self, instance):
+        filechooser.open_file(on_selection=self.on_file_selected)
 
-    def set_file(self, selection):
+    def on_file_selected(self, selection):
         if selection:
-            self.file_path = selection[0]
-            self.label.text = f"Selected: {os.path.basename(self.file_path)}"
+            self.selected_path = selection[0]
+            self.status.text = f"Selected: {os.path.basename(self.selected_path)}"
 
-    def extract(self, instance):
-        query = self.search_input.text.strip().lower()
-        if not self.file_path or not query:
-            self.label.text = "Error: Select file and enter search text"
+    def process_pdf(self, instance):
+        keyword = self.search_input.text.strip().lower()
+        if not self.selected_path or not keyword:
+            self.status.text = "Error: File and Keyword required!"
             return
 
+        # Request Android Permissions at runtime
         if platform == 'android':
             from android.permissions import request_permissions, Permission
             request_permissions([Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE])
 
         try:
-            doc = fitz.open(self.file_path)
+            doc = fitz.open(self.selected_path)
             if doc.is_encrypted:
                 if not doc.authenticate(self.password_input.text):
-                    self.label.text = "Error: Invalid PDF Password"
+                    self.status.text = "Error: Wrong Password"
                     return
 
-            results = []
+            extracted_data = []
             for page in doc:
-                # blocks capture full lines or paragraphs containing the text
                 blocks = page.get_text("blocks")
                 for b in blocks:
-                    content = b[4].strip()
-                    if query in content.lower():
-                        # Standardize line format
-                        clean_line = " ".join(content.split())
-                        results.append({"Page": page.number + 1, "Extracted Line": clean_line})
+                    line_text = b[4].strip()
+                    if keyword in line_text.lower():
+                        clean_text = " ".join(line_text.split())
+                        extracted_data.append({"Page": page.number + 1, "Data": clean_text})
 
-            if not results:
-                self.label.text = f"No matches found for '{query}'"
+            if not extracted_data:
+                self.status.text = f"No matches found for '{keyword}'"
                 return
 
-            # Generate Unique Excel Name
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"PDF_Search_{query}_{timestamp}.xlsx"
+            # File naming logic
+            timestamp = datetime.now().strftime("%H%M%S")
+            fname = f"Search_{keyword}_{timestamp}.xlsx"
 
             if platform == 'android':
                 from android.storage import primary_external_storage_path
-                save_path = os.path.join(primary_external_storage_path(), "Download", filename)
+                # Save to /sdcard/Download/ for easy access
+                download_path = os.path.join(primary_external_storage_path(), 'Download')
+                if not os.path.exists(download_path):
+                    os.makedirs(download_path)
+                final_path = os.path.join(download_path, fname)
             else:
-                save_path = filename
+                final_path = fname
 
-            pd.DataFrame(results).to_excel(save_path, index=False, engine='openpyxl')
-            self.label.text = f"✅ Extracted {len(results)} lines!\nFile: {filename}"
+            pd.DataFrame(extracted_data).to_excel(final_path, index=False)
+            self.status.text = f"✅ SUCCESS!\nSaved to Downloads/{fname}"
 
         except Exception as e:
-            self.label.text = f"Error: {str(e)}"
+            self.status.text = f"Error: {str(e)}"
 
-class PDFSearchApp(App):
+class MainApp(App):
     def build(self): return UI()
 
 if __name__ == "__main__":
-    PDFSearchApp().run()
+    MainApp().run()
