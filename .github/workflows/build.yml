@@ -15,7 +15,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt update
-          # libtool-bin is the critical fix for the LT_SYS_SYMBOL_USCORE error
+          # libtool-bin, m4, and cmake are the critical fixes for your log error
           sudo apt install -y \
             git zip unzip openjdk-17-jdk python3-pip \
             autoconf libtool libtool-bin m4 cmake \
